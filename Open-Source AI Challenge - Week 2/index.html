@@ -1,0 +1,1089 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ScopeGuard — Local-First Scope Creep & Invoice Overrun Auditor</title>
+  
+  <!-- Inter & JetBrains Mono Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+            mono: ['JetBrains Mono', 'monospace'],
+          },
+          colors: {
+            brand: {
+              50: '#f0fdf4',
+              500: '#10b981',
+              600: '#059669',
+            }
+          }
+        }
+      }
+    }
+  </script>
+  
+  <style>
+    /* Custom Scrollbars */
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: #0f172a; }
+    ::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
+    ::-webkit-scrollbar-thumb:hover { background: #475569; }
+    
+    /* Code and Terminal accents */
+    .terminal-card {
+      background: radial-gradient(circle at top left, rgba(30, 41, 59, 0.7), rgba(15, 23, 42, 0.95));
+      border: 1px solid rgba(51, 65, 85, 0.6);
+      backdrop-filter: blur(12px);
+    }
+    .meter-glow {
+      box-shadow: 0 0 25px -5px rgba(239, 68, 68, 0.35);
+    }
+    .meter-glow-safe {
+      box-shadow: 0 0 25px -5px rgba(16, 185, 129, 0.35);
+    }
+    .meter-glow-warning {
+      box-shadow: 0 0 25px -5px rgba(245, 158, 11, 0.35);
+    }
+  </style>
+</head>
+<body class="bg-slate-950 text-slate-100 font-sans antialiased min-h-screen selection:bg-emerald-500/30 selection:text-emerald-300">
+
+  <!-- Top Toast / Alert Banner -->
+  <div id="alertBanner" class="hidden fixed top-4 right-4 z-50 max-w-md p-4 rounded-xl border shadow-2xl flex items-start gap-3 transition-all duration-300">
+    <div id="alertIcon" class="mt-0.5 text-lg"></div>
+    <div class="flex-1">
+      <h4 id="alertTitle" class="text-sm font-semibold"></h4>
+      <p id="alertMessage" class="text-xs text-slate-300 mt-0.5"></p>
+    </div>
+    <button onclick="dismissAlert()" class="text-slate-400 hover:text-slate-200 text-sm font-bold ml-2">&times;</button>
+  </div>
+
+  <div class="max-w-[1720px] mx-auto p-4 sm:p-6 lg:p-8 space-y-6">
+
+    <!-- ===================================================================== -->
+    <!-- 1. Top Navigation & Live Status Header -->
+    <!-- ===================================================================== -->
+    <header class="terminal-card rounded-2xl p-4 sm:p-5 flex flex-col xl:flex-row items-start xl:items-center justify-between gap-4">
+      <div class="flex items-center gap-3.5">
+        <div class="w-11 h-11 rounded-xl bg-gradient-to-br from-emerald-500 via-teal-600 to-indigo-600 flex items-center justify-center shadow-lg shadow-emerald-500/20 ring-1 ring-emerald-400/30">
+          <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/>
+          </svg>
+        </div>
+        <div>
+          <div class="flex items-center gap-2.5">
+            <h1 class="text-xl font-bold tracking-tight bg-gradient-to-r from-white via-slate-100 to-slate-400 bg-clip-text text-transparent">ScopeGuard</h1>
+            <span class="px-2 py-0.5 rounded-full text-[10px] font-mono font-semibold tracking-wide bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">v0.2.0 LOCAL-FIRST</span>
+          </div>
+          <p class="text-xs text-slate-400 mt-0.5">Scope Creep & Invoice Overrun Auditor for Freelancers & Micro-Agencies</p>
+        </div>
+      </div>
+
+      <!-- Center Status Badges -->
+      <div class="flex flex-wrap items-center gap-2.5 sm:gap-3 text-xs">
+        <!-- Inference Status Pill -->
+        <div id="inferenceStatusPill" class="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-slate-900/80 border border-slate-800 text-slate-300 font-mono">
+          <span class="w-2 h-2 rounded-full bg-amber-400 animate-pulse"></span>
+          <span id="inferenceStatusText">Connecting to Ollama...</span>
+        </div>
+
+        <!-- Sentry Tracing Badge -->
+        <div class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-indigo-500/10 border border-indigo-500/25 text-indigo-300 font-mono">
+          <svg class="w-3.5 h-3.5 text-indigo-400" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M13.04 1.43c-.48-.96-1.6-.96-2.08 0l-9.6 19.2c-.48.96.16 2.07 1.04 2.07h19.2c.88 0 1.52-1.11 1.04-2.07l-9.6-19.2zm-1.04 4.57l7.2 14.4H4.8l7.2-14.4z"/>
+          </svg>
+          <span>Sentry Agent Tracing</span>
+        </div>
+      </div>
+
+      <!-- Controls & Presets -->
+      <div class="flex flex-wrap items-center gap-3 w-full xl:w-auto justify-start xl:justify-end">
+        <!-- Model Selector -->
+        <div class="flex items-center gap-2 bg-slate-900/80 border border-slate-800 rounded-lg px-2.5 py-1.5">
+          <label class="text-[11px] font-medium text-slate-400 uppercase tracking-wider">Model:</label>
+          <select id="modelSelect" class="bg-transparent text-xs font-mono font-semibold text-emerald-400 focus:outline-none cursor-pointer">
+            <option value="gemma3:4b" class="bg-slate-900 text-slate-200">gemma3:4b (Recommended)</option>
+            <option value="gemma3:12b" class="bg-slate-900 text-slate-200">gemma3:12b (High Precision)</option>
+            <option value="gemma3:27b" class="bg-slate-900 text-slate-200">gemma3:27b (Enterprise)</option>
+            <option value="cloud_demo_fallback" class="bg-slate-900 text-slate-200">cloud_demo_fallback</option>
+          </select>
+        </div>
+
+        <!-- Hourly Rate Input -->
+        <div class="flex items-center gap-1.5 bg-slate-900/80 border border-slate-800 rounded-lg px-2.5 py-1.5">
+          <label class="text-[11px] font-medium text-slate-400 uppercase tracking-wider">Rate:</label>
+          <span class="text-xs text-slate-500 font-mono">$</span>
+          <input type="number" id="hourlyRateInput" value="85" min="20" max="1000" class="w-14 bg-transparent text-xs font-mono font-bold text-slate-200 focus:outline-none">
+          <span class="text-[11px] text-slate-500 font-mono">/hr</span>
+        </div>
+      </div>
+    </header>
+
+    <!-- Preset Scenarios Bar -->
+    <div class="flex flex-wrap items-center justify-between gap-3 text-xs bg-slate-900/40 p-3 rounded-xl border border-slate-800/80">
+      <div class="flex items-center gap-2">
+        <span class="text-slate-400 font-medium">Pre-Built Scenarios:</span>
+        <div class="flex flex-wrap gap-2">
+          <button onclick="loadScenario('severe_scope_creep')" id="btnScenario1" class="px-3 py-1.5 rounded-lg bg-rose-500/15 border border-rose-500/30 text-rose-300 hover:bg-rose-500/25 transition font-medium flex items-center gap-1.5">
+            <span class="w-1.5 h-1.5 rounded-full bg-rose-400"></span>
+            Scenario 1: Severe Scope Creep ($6.6k Disputed)
+          </button>
+          <button onclick="loadScenario('moderate_gray_area')" id="btnScenario2" class="px-3 py-1.5 rounded-lg bg-amber-500/15 border border-amber-500/30 text-amber-300 hover:bg-amber-500/25 transition font-medium flex items-center gap-1.5">
+            <span class="w-1.5 h-1.5 rounded-full bg-amber-400"></span>
+            Scenario 2: Ambiguous Gray Area (Milestone Stalled)
+          </button>
+          <button onclick="loadScenario('low_risk')" id="btnScenario3" class="px-3 py-1.5 rounded-lg bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 hover:bg-emerald-500/25 transition font-medium flex items-center gap-1.5">
+            <span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+            Scenario 3: Clean In-Scope Sprint (On Budget)
+          </button>
+        </div>
+      </div>
+      <button onclick="openCsvModal()" class="text-xs text-indigo-400 hover:text-indigo-300 font-mono underline flex items-center gap-1">
+        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7v10c0 2 1 3 3 3h10c2 0 3-1 3-3V7c0-2-1-3-3-3H7C5 4 4 5 4 7zm0 5h16"/></svg>
+        Inspect 36-Row TabPFN Historical CSV
+      </button>
+    </div>
+
+    <!-- ===================================================================== -->
+    <!-- Main Two-Column Layout -->
+    <!-- ===================================================================== -->
+    <main class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+
+      <!-- ================================================================= -->
+      <!-- LEFT COLUMN: Multi-Source Inputs & TabPFN Sliders -->
+      <!-- ================================================================= -->
+      <section class="lg:col-span-5 flex flex-col gap-5">
+        
+        <!-- Unstructured Evidence Workspace (Tabs) -->
+        <div class="terminal-card rounded-2xl p-5 space-y-4">
+          <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+            <div class="flex gap-2 text-xs font-medium">
+              <button onclick="switchTab('sow')" id="tabBtnSow" class="px-3 py-1.5 rounded-lg bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 transition">
+                1. SOW Contract
+              </button>
+              <button onclick="switchTab('git')" id="tabBtnGit" class="px-3 py-1.5 rounded-lg bg-slate-900 text-slate-400 border border-slate-800 hover:text-slate-200 transition">
+                2. Git Commits
+              </button>
+              <button onclick="switchTab('chat')" id="tabBtnChat" class="px-3 py-1.5 rounded-lg bg-slate-900 text-slate-400 border border-slate-800 hover:text-slate-200 transition">
+                3. Client Chat
+              </button>
+            </div>
+            <span id="charCountBadge" class="text-[11px] font-mono text-slate-500">0 / 15,000 chars</span>
+          </div>
+
+          <!-- Tab 1: SOW Markdown -->
+          <div id="tabContentSow" class="space-y-1.5">
+            <div class="flex justify-between items-center text-xs text-slate-400">
+              <span class="font-medium">Signed Statement of Work (Markdown with numbered clauses & exclusions):</span>
+            </div>
+            <textarea id="sowInput" rows="11" class="w-full bg-slate-900/90 text-slate-200 font-mono text-xs p-3.5 rounded-xl border border-slate-800 focus:border-emerald-500/50 focus:outline-none leading-relaxed resize-y" placeholder="# Statement of Work..."></textarea>
+          </div>
+
+          <!-- Tab 2: Git Logs -->
+          <div id="tabContentGit" class="hidden space-y-1.5">
+            <div class="flex justify-between items-center text-xs text-slate-400">
+              <span class="font-medium">Raw Git Commit History (Hashes, dates, messages):</span>
+            </div>
+            <textarea id="gitInput" rows="11" class="w-full bg-slate-900/90 text-slate-200 font-mono text-xs p-3.5 rounded-xl border border-slate-800 focus:border-emerald-500/50 focus:outline-none leading-relaxed resize-y" placeholder="commit 7c4a1e9..."></textarea>
+          </div>
+
+          <!-- Tab 3: Client Chat -->
+          <div id="tabContentChat" class="hidden space-y-1.5">
+            <div class="flex justify-between items-center text-xs text-slate-400">
+              <span class="font-medium">Client Chat Transcript (Slack / WhatsApp / Email):</span>
+            </div>
+            <textarea id="chatInput" rows="11" class="w-full bg-slate-900/90 text-slate-200 font-mono text-xs p-3.5 rounded-xl border border-slate-800 focus:border-emerald-500/50 focus:outline-none leading-relaxed resize-y" placeholder="[10:14] Client: Hey quick question..."></textarea>
+          </div>
+        </div>
+
+        <!-- TabPFN Project Telemetry Card -->
+        <div class="terminal-card rounded-2xl p-5 space-y-4">
+          <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+            <div class="flex items-center gap-2">
+              <div class="w-2 h-2 rounded-full bg-indigo-400"></div>
+              <h2 class="text-sm font-semibold tracking-wide text-slate-200">TabPFN Project Telemetry</h2>
+            </div>
+            <span class="text-[11px] font-mono text-indigo-400 bg-indigo-500/10 px-2 py-0.5 rounded border border-indigo-500/20">Single-Pass CPU Prior</span>
+          </div>
+
+          <div class="space-y-3.5 text-xs">
+            <!-- 1. Agreed Hours -->
+            <div>
+              <div class="flex justify-between items-center mb-1 text-slate-400">
+                <span>Agreed SOW Hours:</span>
+                <span id="agreedHoursVal" class="font-mono font-bold text-slate-200">90.0 hrs</span>
+              </div>
+              <input type="range" id="agreedHoursSlider" min="20" max="250" step="5" value="90" class="w-full accent-emerald-500 h-1.5 bg-slate-800 rounded-lg cursor-pointer">
+            </div>
+
+            <!-- 2. Unplanned Commits -->
+            <div>
+              <div class="flex justify-between items-center mb-1 text-slate-400">
+                <span>Unplanned / Scope Commits:</span>
+                <span id="unplannedCommitsVal" class="font-mono font-bold text-rose-400">38 commits</span>
+              </div>
+              <input type="range" id="unplannedCommitsSlider" min="0" max="50" step="1" value="38" class="w-full accent-rose-500 h-1.5 bg-slate-800 rounded-lg cursor-pointer">
+            </div>
+
+            <!-- 3. Client Chat Requests -->
+            <div>
+              <div class="flex justify-between items-center mb-1 text-slate-400">
+                <span>Informal Scope Requests (Slack/WhatsApp):</span>
+                <span id="chatRequestsVal" class="font-mono font-bold text-amber-400">54 requests</span>
+              </div>
+              <input type="range" id="chatRequestsSlider" min="0" max="75" step="1" value="54" class="w-full accent-amber-500 h-1.5 bg-slate-800 rounded-lg cursor-pointer">
+            </div>
+
+            <!-- 4. Revision Rounds -->
+            <div>
+              <div class="flex justify-between items-center mb-1 text-slate-400">
+                <span>Client Revision / Rework Rounds:</span>
+                <span id="revisionRoundsVal" class="font-mono font-bold text-indigo-400">7 rounds</span>
+              </div>
+              <input type="range" id="revisionRoundsSlider" min="1" max="10" step="1" value="7" class="w-full accent-indigo-500 h-1.5 bg-slate-800 rounded-lg cursor-pointer">
+            </div>
+
+            <!-- 5. Retainer Commercial Structure -->
+            <div class="pt-1">
+              <label class="block text-slate-400 mb-2">Contract Commercial Structure:</label>
+              <div class="grid grid-cols-3 gap-2">
+                <button type="button" onclick="setRetainerType(0)" id="retainerBtn0" class="py-2 px-2.5 rounded-lg text-center text-xs font-medium border bg-emerald-500/20 text-emerald-300 border-emerald-500/40">
+                  Fixed-Price
+                </button>
+                <button type="button" onclick="setRetainerType(1)" id="retainerBtn1" class="py-2 px-2.5 rounded-lg text-center text-xs font-medium border bg-slate-900 text-slate-400 border-slate-800 hover:text-slate-200">
+                  Milestone
+                </button>
+                <button type="button" onclick="setRetainerType(2)" id="retainerBtn2" class="py-2 px-2.5 rounded-lg text-center text-xs font-medium border bg-slate-900 text-slate-400 border-slate-800 hover:text-slate-200">
+                  Hourly Retainer
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Primary CTA: Run Dual-Model Audit -->
+        <button id="runAuditBtn" onclick="runDualModelAudit()" class="w-full py-4 px-6 rounded-2xl bg-gradient-to-r from-emerald-500 via-teal-600 to-indigo-600 hover:from-emerald-400 hover:to-indigo-500 text-white font-bold text-sm shadow-xl shadow-emerald-500/15 ring-1 ring-emerald-400/40 transition-all duration-200 flex items-center justify-center gap-3">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+          <span>Run Dual-Model Scope & Overrun Audit</span>
+        </button>
+
+        <!-- Multi-Step Execution Status (Shown when running) -->
+        <div id="pipelineProgressCard" class="hidden terminal-card rounded-xl p-4 space-y-2.5 text-xs font-mono">
+          <div class="flex items-center justify-between text-slate-300">
+            <span id="pipelineStepText">Initializing pipeline...</span>
+            <span id="pipelineStepNumber" class="text-emerald-400 font-bold">1 / 3</span>
+          </div>
+          <div class="w-full bg-slate-800 rounded-full h-1.5 overflow-hidden">
+            <div id="pipelineProgressBar" class="bg-gradient-to-r from-emerald-500 to-indigo-500 h-full w-1/3 transition-all duration-300"></div>
+          </div>
+          <div class="flex items-center justify-between text-[11px] text-slate-500">
+            <span>Parent Span: scopeguard.agent.pipeline</span>
+            <span class="animate-pulse text-indigo-400">Observing...</span>
+          </div>
+        </div>
+
+      </section>
+
+      <!-- ================================================================= -->
+      <!-- RIGHT COLUMN: Executive Results, Change Order & Telemetry -->
+      <!-- ================================================================= -->
+      <section class="lg:col-span-7 flex flex-col gap-6">
+
+        <!-- Card A: TabPFN Overrun & Dispute Forecast -->
+        <div class="terminal-card rounded-2xl p-6 space-y-5">
+          <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+            <div class="flex items-center gap-2">
+              <span class="w-2.5 h-2.5 rounded-full bg-rose-500"></span>
+              <h3 class="text-sm font-semibold tracking-wide text-slate-200">Prior Labs TabPFN Overrun & Dispute Forecast</h3>
+            </div>
+            <div class="flex items-center gap-2">
+              <span id="tabpfnLatencyPill" class="text-[11px] font-mono text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">4.2 ms CPU forward pass</span>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-12 gap-6 items-center">
+            <!-- Risk Meter Gauge -->
+            <div class="md:col-span-5 flex flex-col items-center justify-center p-4 rounded-xl bg-slate-900/60 border border-slate-800 text-center relative overflow-hidden">
+              <span class="text-[11px] font-medium text-slate-400 uppercase tracking-wider">Dispute / Overrun Risk</span>
+              <div class="my-2 flex items-baseline justify-center gap-1">
+                <span id="tabpfnProbability" class="text-5xl font-mono font-black text-rose-400">99.0</span>
+                <span class="text-xl font-mono font-bold text-rose-500">%</span>
+              </div>
+              <span id="riskTierBadge" class="px-3 py-1 rounded-full text-xs font-mono font-bold tracking-wider bg-rose-500/20 text-rose-300 border border-rose-500/40">CRITICAL RISK</span>
+              <p class="text-[10px] text-slate-500 mt-2 font-mono">Benchmark: Prior Labs TabPFN Foundation Model</p>
+            </div>
+
+            <!-- Top Statistical Risk Drivers -->
+            <div class="md:col-span-7 space-y-2.5">
+              <h4 class="text-xs font-semibold text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
+                <svg class="w-4 h-4 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+                Dominant Overrun Risk Drivers:
+              </h4>
+              <ul id="riskDriversList" class="space-y-1.5 text-xs text-slate-300 font-mono">
+                <!-- Injected via JS -->
+              </ul>
+            </div>
+          </div>
+        </div>
+
+        <!-- Card B: Gemma 3 Scope Creep Diff & Itemized Ledger -->
+        <div class="terminal-card rounded-2xl p-6 space-y-5">
+          <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+            <div class="flex items-center gap-2">
+              <span class="w-2.5 h-2.5 rounded-full bg-emerald-400"></span>
+              <h3 class="text-sm font-semibold tracking-wide text-slate-200">Gemma 3 Scope Creep Audit & Recoverable Fees</h3>
+            </div>
+            <div class="flex items-center gap-2">
+              <span id="auditVerdictBadge" class="text-xs font-mono font-bold px-2.5 py-0.5 rounded-full bg-rose-500/20 text-rose-300 border border-rose-500/40">SEVERE_SCOPE_CREEP</span>
+              <span id="confidenceScoreBadge" class="text-xs font-mono text-slate-400">92.5% Confidence</span>
+            </div>
+          </div>
+
+          <!-- Hero KPI Cards -->
+          <div class="grid grid-cols-2 gap-4">
+            <div class="p-4 rounded-xl bg-gradient-to-br from-indigo-950/60 to-slate-900 border border-indigo-500/20">
+              <span class="text-xs text-indigo-300 font-medium">Unbilled Hours Caught</span>
+              <div class="mt-1 flex items-baseline gap-1.5">
+                <span id="totalUnbilledHours" class="text-3xl font-mono font-black text-indigo-300">78.0</span>
+                <span class="text-sm font-mono text-indigo-400">hours</span>
+              </div>
+              <p class="text-[11px] text-slate-400 mt-1">Out-of-scope work absorbed by dev</p>
+            </div>
+
+            <div class="p-4 rounded-xl bg-gradient-to-br from-emerald-950/60 to-slate-900 border border-emerald-500/20">
+              <span class="text-xs text-emerald-300 font-medium">Recoverable Revenue</span>
+              <div class="mt-1 flex items-baseline gap-1.5">
+                <span id="totalRecoveryUsd" class="text-3xl font-mono font-black text-emerald-300">$6,630.00</span>
+                <span class="text-sm font-mono text-emerald-400">USD</span>
+              </div>
+              <p class="text-[11px] text-slate-400 mt-1">Calculated at agreed change-order rate</p>
+            </div>
+          </div>
+
+          <!-- Executive Reasoning -->
+          <div class="p-3.5 rounded-xl bg-slate-900/80 border border-slate-800 text-xs text-slate-300 leading-relaxed font-sans">
+            <span class="font-semibold text-slate-200">Executive Analysis: </span>
+            <span id="executiveReasoningText">ScopeGuard detected significant scope deviations...</span>
+          </div>
+
+          <!-- Itemized Table of Flagged Items -->
+          <div class="space-y-2">
+            <h4 class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Itemized Scope Deviations:</h4>
+            <div class="overflow-x-auto rounded-xl border border-slate-800">
+              <table class="w-full text-left text-xs font-mono">
+                <thead class="bg-slate-900/90 text-slate-400 border-b border-slate-800">
+                  <tr>
+                    <th class="p-2.5">Source</th>
+                    <th class="p-2.5">SOW Clause Violated</th>
+                    <th class="p-2.5">Evidence Quote</th>
+                    <th class="p-2.5 text-right">Hours</th>
+                    <th class="p-2.5 text-right">Fee ($)</th>
+                    <th class="p-2.5 text-center">Class</th>
+                  </tr>
+                </thead>
+                <tbody id="flaggedItemsTbody" class="divide-y divide-slate-800/80 bg-slate-950/60">
+                  <!-- Injected via JS -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- Card C: Ready-to-Send Change Order & Export Suite -->
+        <div class="terminal-card rounded-2xl p-6 space-y-4">
+          <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+            <div class="flex items-center gap-2">
+              <span class="w-2.5 h-2.5 rounded-full bg-indigo-400"></span>
+              <h3 class="text-sm font-semibold tracking-wide text-slate-200">Gemma 3 Change Order Draft</h3>
+            </div>
+            <div class="flex gap-2">
+              <button onclick="copyChangeOrderDraft()" class="px-3 py-1.5 rounded-lg bg-indigo-500/20 hover:bg-indigo-500/30 text-indigo-300 border border-indigo-500/30 text-xs font-medium transition flex items-center gap-1.5">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+                Copy Draft
+              </button>
+              <button onclick="downloadChangeOrderMd()" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 text-xs font-medium transition flex items-center gap-1.5">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+                Download (.md)
+              </button>
+              <button onclick="exportAuditLedgerCsv()" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 text-xs font-medium transition flex items-center gap-1.5">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                Export Ledger (.csv)
+              </button>
+            </div>
+          </div>
+
+          <div class="relative">
+            <textarea id="changeOrderDraft" rows="9" readonly class="w-full bg-slate-900/90 text-slate-300 font-mono text-xs p-4 rounded-xl border border-slate-800 focus:outline-none leading-relaxed"></textarea>
+          </div>
+        </div>
+
+        <!-- Card D: Sentry Agent Trace & Unit Economics Inspector -->
+        <div class="terminal-card rounded-2xl p-6 space-y-5">
+          <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+            <div class="flex items-center gap-2">
+              <div class="w-2.5 h-2.5 rounded-full bg-purple-400"></div>
+              <h3 class="text-sm font-semibold tracking-wide text-slate-200">Sentry Agent Trace Inspector & Unit Economics</h3>
+            </div>
+            <div class="flex items-center gap-2 font-mono text-xs text-slate-400">
+              <span>Trace ID:</span>
+              <code id="sentryTraceId" class="text-purple-300 bg-purple-500/10 px-2 py-0.5 rounded border border-purple-500/20 cursor-pointer" onclick="copyTraceId()">d0a27924...</code>
+            </div>
+          </div>
+
+          <!-- Trace Waterfall Visualization -->
+          <div class="space-y-3 font-mono text-xs">
+            <h4 class="text-slate-400 font-semibold text-[11px] uppercase tracking-wider">Span Execution Waterfall:</h4>
+            
+            <!-- Parent Span -->
+            <div class="space-y-1">
+              <div class="flex justify-between text-[11px] text-slate-300">
+                <span class="font-semibold text-slate-200">1. scopeguard.agent.pipeline (ai.pipeline)</span>
+                <span id="parentSpanDuration" class="text-purple-400">2392.8 ms (100%)</span>
+              </div>
+              <div class="w-full bg-slate-900 rounded-full h-2 border border-slate-800">
+                <div class="bg-purple-500 h-full rounded-full w-full"></div>
+              </div>
+            </div>
+
+            <!-- Child Span 1: TabPFN -->
+            <div class="space-y-1 pl-4 border-l border-slate-800">
+              <div class="flex justify-between text-[11px] text-slate-300">
+                <span class="text-emerald-300">↳ tabpfn.overrun_forecast (ml.tabular.tabpfn)</span>
+                <span id="tabpfnSpanDuration" class="text-emerald-400">4.2 ms</span>
+              </div>
+              <div class="w-full bg-slate-900 rounded-full h-1.5 border border-slate-800">
+                <div id="tabpfnSpanBar" class="bg-emerald-500 h-full rounded-full w-[2%]"></div>
+              </div>
+              <div id="tabpfnSpanAttrs" class="text-[10px] text-slate-500">attributes: dataset_rows=36, probability=99.0%, risk_tier=CRITICAL</div>
+            </div>
+
+            <!-- Child Span 2: Gemma 3 -->
+            <div class="space-y-1 pl-4 border-l border-slate-800">
+              <div class="flex justify-between text-[11px] text-slate-300">
+                <span class="text-indigo-300">↳ gemma.sow_diff_audit (ai.chat_completions.create)</span>
+                <span id="gemmaSpanDuration" class="text-indigo-400">2388.6 ms</span>
+              </div>
+              <div class="w-full bg-slate-900 rounded-full h-1.5 border border-slate-800">
+                <div id="gemmaSpanBar" class="bg-indigo-500 h-full rounded-full w-[98%]"></div>
+              </div>
+              <div id="gemmaSpanAttrs" class="text-[10px] text-slate-500">attributes: model=gemma3:4b, unbilled_hours=78.0, recovery=$6,630.00</div>
+            </div>
+          </div>
+
+          <!-- Unit Economics Comparison Grid -->
+          <div class="pt-2 border-t border-slate-800/80">
+            <h4 class="text-slate-400 font-semibold text-[11px] uppercase tracking-wider mb-3">Local Open-Weight Unit Economics:</h4>
+            <div class="grid grid-cols-3 gap-3 text-center">
+              <div class="p-3 rounded-xl bg-slate-900 border border-slate-800">
+                <span class="text-[10px] font-mono text-slate-400 uppercase">Local Inference Cost</span>
+                <div class="text-lg font-mono font-bold text-emerald-400 mt-1">$0.00</div>
+                <span class="text-[10px] text-slate-500">Ollama + TabPFN CPU</span>
+              </div>
+              <div class="p-3 rounded-xl bg-slate-900 border border-slate-800">
+                <span class="text-[10px] font-mono text-slate-400 uppercase">Frontier API Saved</span>
+                <div id="frontierSavedVal" class="text-lg font-mono font-bold text-indigo-400 mt-1">$0.0102</div>
+                <span class="text-[10px] text-slate-500">vs Sonnet/GPT-4o ($3/$15)</span>
+              </div>
+              <div class="p-3 rounded-xl bg-slate-900 border border-slate-800">
+                <span class="text-[10px] font-mono text-slate-400 uppercase">Annualized Agency ROI</span>
+                <div id="annualRoiVal" class="text-lg font-mono font-bold text-emerald-400 mt-1">$79,560</div>
+                <span class="text-[10px] text-slate-500">12 client audits protected</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </section>
+
+    </main>
+
+  </div>
+
+  <!-- ===================================================================== -->
+  <!-- 36-Row Historical Training Dataset Modal -->
+  <!-- ===================================================================== -->
+  <div id="csvModal" class="hidden fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="terminal-card rounded-2xl w-full max-w-5xl max-h-[85vh] flex flex-col p-6 shadow-2xl border border-slate-800">
+      <div class="flex items-center justify-between border-b border-slate-800 pb-4">
+        <div>
+          <h3 class="text-base font-bold text-slate-100 flex items-center gap-2">
+            <span>Prior Labs TabPFN 36-Row Training Dataset</span>
+            <span class="text-xs font-mono px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">small-data prior</span>
+          </h3>
+          <p class="text-xs text-slate-400 mt-1">
+            TabPFN fits this 36-row freelance dataset on CPU in a single forward pass without overfitting or hyperparameter tuning.
+          </p>
+        </div>
+        <button onclick="closeCsvModal()" class="text-slate-400 hover:text-white text-lg font-bold p-1">&times;</button>
+      </div>
+
+      <div class="my-4 flex items-center justify-between gap-4 text-xs font-mono">
+        <input type="text" id="csvSearchInput" onkeyup="filterCsvTable()" placeholder="Search project name or features..." class="w-72 bg-slate-900 border border-slate-800 rounded-lg px-3 py-1.5 text-slate-200 focus:outline-none">
+        <span class="text-slate-500">36 rows &middot; 5 features &middot; 1 binary target</span>
+      </div>
+
+      <div class="flex-1 overflow-auto rounded-xl border border-slate-800">
+        <table class="w-full text-left text-xs font-mono" id="csvTable">
+          <thead class="bg-slate-900 text-slate-300 border-b border-slate-800 sticky top-0">
+            <tr>
+              <th class="p-2.5">#</th>
+              <th class="p-2.5">Agreed Hours</th>
+              <th class="p-2.5">Unplanned Commits</th>
+              <th class="p-2.5">Chat Requests</th>
+              <th class="p-2.5">Revisions</th>
+              <th class="p-2.5">Retainer Type</th>
+              <th class="p-2.5">Overrun / Dispute Target</th>
+            </tr>
+          </thead>
+          <tbody id="csvTableTbody" class="divide-y divide-slate-800/80 bg-slate-950/60">
+            <!-- Injected via JS -->
+          </tbody>
+        </table>
+      </div>
+
+      <div class="pt-4 border-t border-slate-800 flex justify-end">
+        <button onclick="closeCsvModal()" class="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-medium text-slate-200">
+          Close Dataset Inspector
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================================================================== -->
+  <!-- Vanilla JavaScript Application Logic -->
+  <!-- ===================================================================== -->
+  <script>
+    // Global application state
+    let state = {
+      activeTab: 'sow',
+      retainerType: 0,
+      scenariosData: {},
+      historicalRows: [],
+      latestAuditResponse: null,
+      isAuditing: false,
+    };
+
+    // DOM References
+    const elements = {
+      sowInput: document.getElementById('sowInput'),
+      gitInput: document.getElementById('gitInput'),
+      chatInput: document.getElementById('chatInput'),
+      charCountBadge: document.getElementById('charCountBadge'),
+      agreedHoursSlider: document.getElementById('agreedHoursSlider'),
+      agreedHoursVal: document.getElementById('agreedHoursVal'),
+      unplannedCommitsSlider: document.getElementById('unplannedCommitsSlider'),
+      unplannedCommitsVal: document.getElementById('unplannedCommitsVal'),
+      chatRequestsSlider: document.getElementById('chatRequestsSlider'),
+      chatRequestsVal: document.getElementById('chatRequestsVal'),
+      revisionRoundsSlider: document.getElementById('revisionRoundsSlider'),
+      revisionRoundsVal: document.getElementById('revisionRoundsVal'),
+      hourlyRateInput: document.getElementById('hourlyRateInput'),
+      modelSelect: document.getElementById('modelSelect'),
+      runAuditBtn: document.getElementById('runAuditBtn'),
+      pipelineProgressCard: document.getElementById('pipelineProgressCard'),
+      pipelineProgressBar: document.getElementById('pipelineProgressBar'),
+      pipelineStepText: document.getElementById('pipelineStepText'),
+      pipelineStepNumber: document.getElementById('pipelineStepNumber'),
+      tabpfnProbability: document.getElementById('tabpfnProbability'),
+      riskTierBadge: document.getElementById('riskTierBadge'),
+      tabpfnLatencyPill: document.getElementById('tabpfnLatencyPill'),
+      riskDriversList: document.getElementById('riskDriversList'),
+      auditVerdictBadge: document.getElementById('auditVerdictBadge'),
+      confidenceScoreBadge: document.getElementById('confidenceScoreBadge'),
+      totalUnbilledHours: document.getElementById('totalUnbilledHours'),
+      totalRecoveryUsd: document.getElementById('totalRecoveryUsd'),
+      executiveReasoningText: document.getElementById('executiveReasoningText'),
+      flaggedItemsTbody: document.getElementById('flaggedItemsTbody'),
+      changeOrderDraft: document.getElementById('changeOrderDraft'),
+      sentryTraceId: document.getElementById('sentryTraceId'),
+      parentSpanDuration: document.getElementById('parentSpanDuration'),
+      tabpfnSpanDuration: document.getElementById('tabpfnSpanDuration'),
+      tabpfnSpanBar: document.getElementById('tabpfnSpanBar'),
+      tabpfnSpanAttrs: document.getElementById('tabpfnSpanAttrs'),
+      gemmaSpanDuration: document.getElementById('gemmaSpanDuration'),
+      gemmaSpanBar: document.getElementById('gemmaSpanBar'),
+      gemmaSpanAttrs: document.getElementById('gemmaSpanAttrs'),
+      frontierSavedVal: document.getElementById('frontierSavedVal'),
+      annualRoiVal: document.getElementById('annualRoiVal'),
+      inferenceStatusText: document.getElementById('inferenceStatusText'),
+      inferenceStatusPill: document.getElementById('inferenceStatusPill'),
+      csvTableTbody: document.getElementById('csvTableTbody'),
+      csvModal: document.getElementById('csvModal'),
+      alertBanner: document.getElementById('alertBanner'),
+      alertTitle: document.getElementById('alertTitle'),
+      alertMessage: document.getElementById('alertMessage'),
+      alertIcon: document.getElementById('alertIcon'),
+    };
+
+    // Helper: Strict HTML Escaping for XSS prevention
+    function escapeHtml(str) {
+      if (!str) return '';
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+    }
+
+    // Helper: Show Alert Banner
+    function showAlert(title, message, isError = false) {
+      elements.alertBanner.className = isError 
+        ? "fixed top-4 right-4 z-50 max-w-md p-4 rounded-xl border shadow-2xl flex items-start gap-3 bg-rose-950/90 border-rose-500/40 text-rose-200 transition-all duration-300"
+        : "fixed top-4 right-4 z-50 max-w-md p-4 rounded-xl border shadow-2xl flex items-start gap-3 bg-slate-900/95 border-emerald-500/40 text-slate-100 transition-all duration-300";
+      elements.alertTitle.textContent = title;
+      elements.alertMessage.textContent = message;
+      elements.alertIcon.textContent = isError ? '⚠️' : '✅';
+      elements.alertBanner.classList.remove('hidden');
+      setTimeout(dismissAlert, 5000);
+    }
+
+    function dismissAlert() {
+      elements.alertBanner.classList.add('hidden');
+    }
+
+    // Slider Listeners
+    elements.agreedHoursSlider.addEventListener('input', (e) => {
+      elements.agreedHoursVal.textContent = parseFloat(e.target.value).toFixed(1) + ' hrs';
+    });
+    elements.unplannedCommitsSlider.addEventListener('input', (e) => {
+      elements.unplannedCommitsVal.textContent = e.target.value + ' commits';
+    });
+    elements.chatRequestsSlider.addEventListener('input', (e) => {
+      elements.chatRequestsVal.textContent = e.target.value + ' requests';
+    });
+    elements.revisionRoundsSlider.addEventListener('input', (e) => {
+      elements.revisionRoundsVal.textContent = e.target.value + ' rounds';
+    });
+
+    // Character Counter
+    function updateCharCount() {
+      let currentVal = '';
+      if (state.activeTab === 'sow') currentVal = elements.sowInput.value;
+      else if (state.activeTab === 'git') currentVal = elements.gitInput.value;
+      else if (state.activeTab === 'chat') currentVal = elements.chatInput.value;
+      
+      const count = currentVal.length;
+      elements.charCountBadge.textContent = `${count.toLocaleString()} / 15,000 chars`;
+      if (count > 15000) {
+        elements.charCountBadge.classList.add('text-rose-400');
+      } else {
+        elements.charCountBadge.classList.remove('text-rose-400');
+      }
+    }
+    elements.sowInput.addEventListener('input', updateCharCount);
+    elements.gitInput.addEventListener('input', updateCharCount);
+    elements.chatInput.addEventListener('input', updateCharCount);
+
+    // Tab Switching
+    function switchTab(tabId) {
+      state.activeTab = tabId;
+      ['sow', 'git', 'chat'].forEach(t => {
+        const btn = document.getElementById(`tabBtn${t.charAt(0).toUpperCase() + t.slice(1)}`);
+        const content = document.getElementById(`tabContent${t.charAt(0).toUpperCase() + t.slice(1)}`);
+        if (t === tabId) {
+          btn.className = "px-3 py-1.5 rounded-lg bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 transition";
+          content.classList.remove('hidden');
+        } else {
+          btn.className = "px-3 py-1.5 rounded-lg bg-slate-900 text-slate-400 border border-slate-800 hover:text-slate-200 transition";
+          content.classList.add('hidden');
+        }
+      });
+      updateCharCount();
+    }
+
+    // Retainer Type Toggle
+    function setRetainerType(type) {
+      state.retainerType = type;
+      [0, 1, 2].forEach(i => {
+        const btn = document.getElementById(`retainerBtn${i}`);
+        if (i === type) {
+          btn.className = "py-2 px-2.5 rounded-lg text-center text-xs font-medium border bg-emerald-500/20 text-emerald-300 border-emerald-500/40";
+        } else {
+          btn.className = "py-2 px-2.5 rounded-lg text-center text-xs font-medium border bg-slate-900 text-slate-400 border-slate-800 hover:text-slate-200";
+        }
+      });
+    }
+
+    // Load Scenario Preset
+    function loadScenario(scenarioId) {
+      const sc = state.scenariosData[scenarioId];
+      if (!sc) return;
+
+      elements.sowInput.value = sc.sow_markdown || '';
+      elements.gitInput.value = sc.git_commit_log || '';
+      elements.chatInput.value = sc.chat_transcript || '';
+
+      const t = sc.tabular_inputs || {};
+      elements.agreedHoursSlider.value = t.agreed_hours || 80;
+      elements.agreedHoursVal.textContent = parseFloat(elements.agreedHoursSlider.value).toFixed(1) + ' hrs';
+
+      elements.unplannedCommitsSlider.value = t.unplanned_commits !== undefined ? t.unplanned_commits : 5;
+      elements.unplannedCommitsVal.textContent = elements.unplannedCommitsSlider.value + ' commits';
+
+      elements.chatRequestsSlider.value = t.chat_requests !== undefined ? t.chat_requests : 10;
+      elements.chatRequestsVal.textContent = elements.chatRequestsSlider.value + ' requests';
+
+      elements.revisionRoundsSlider.value = t.revision_rounds !== undefined ? t.revision_rounds : 2;
+      elements.revisionRoundsVal.textContent = elements.revisionRoundsSlider.value + ' rounds';
+
+      setRetainerType(t.client_retainer_type !== undefined ? t.client_retainer_type : 0);
+      updateCharCount();
+
+      // Highlight active preset button
+      document.getElementById('btnScenario1').className = scenarioId === 'severe_scope_creep'
+        ? "px-3 py-1.5 rounded-lg bg-rose-500/30 border border-rose-400 text-rose-200 font-bold flex items-center gap-1.5"
+        : "px-3 py-1.5 rounded-lg bg-rose-500/15 border border-rose-500/30 text-rose-300 hover:bg-rose-500/25 transition font-medium flex items-center gap-1.5";
+
+      document.getElementById('btnScenario2').className = scenarioId === 'moderate_gray_area'
+        ? "px-3 py-1.5 rounded-lg bg-amber-500/30 border border-amber-400 text-amber-200 font-bold flex items-center gap-1.5"
+        : "px-3 py-1.5 rounded-lg bg-amber-500/15 border border-amber-500/30 text-amber-300 hover:bg-amber-500/25 transition font-medium flex items-center gap-1.5";
+
+      document.getElementById('btnScenario3').className = scenarioId === 'low_risk'
+        ? "px-3 py-1.5 rounded-lg bg-emerald-500/30 border border-emerald-400 text-emerald-200 font-bold flex items-center gap-1.5"
+        : "px-3 py-1.5 rounded-lg bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 hover:bg-emerald-500/25 transition font-medium flex items-center gap-1.5";
+
+      showAlert("Scenario Loaded", `Loaded '${sc.title}'. Ready to audit.`);
+    }
+
+    // Run Dual-Model Audit
+    async function runDualModelAudit() {
+      if (state.isAuditing) return;
+      state.isAuditing = true;
+
+      elements.runAuditBtn.disabled = true;
+      elements.runAuditBtn.classList.add('opacity-50', 'cursor-not-allowed');
+      elements.pipelineProgressCard.classList.remove('hidden');
+
+      // Multi-step progress animation
+      updatePipelineStep(1, "1 / 3", "Running TabPFN single-pass tabular forecast on CPU...", "33%");
+
+      const payload = {
+        model_name: elements.modelSelect.value || "gemma3:4b",
+        hourly_rate: parseFloat(elements.hourlyRateInput.value) || 85.0,
+        sow_markdown: elements.sowInput.value,
+        git_logs: elements.gitInput.value,
+        chat_logs: elements.chatInput.value,
+        project_metrics: {
+          agreed_hours: parseFloat(elements.agreedHoursSlider.value),
+          unplanned_commits: parseInt(elements.unplannedCommitsSlider.value, 10),
+          chat_requests: parseInt(elements.chatRequestsSlider.value, 10),
+          revision_rounds: parseInt(elements.revisionRoundsSlider.value, 10),
+          client_retainer_type: state.retainerType,
+        }
+      };
+
+      try {
+        setTimeout(() => {
+          updatePipelineStep(2, "2 / 3", "Auditing SOW deliverables & exclusions with Gemma 3...", "66%");
+        }, 300);
+
+        const response = await fetch('/api/audit', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+
+        if (response.status === 429) {
+          const retryAfter = response.headers.get('Retry-After') || '60';
+          showAlert("Rate Limit Exceeded", `Too many requests. Please wait ${retryAfter} seconds before auditing again.`, true);
+          return;
+        }
+
+        if (!response.ok) {
+          const errData = await response.json().catch(() => ({}));
+          throw new Error(errData.detail || `HTTP ${response.status}`);
+        }
+
+        updatePipelineStep(3, "3 / 3", "Recording Sentry Agent Trace spans...", "100%");
+
+        const data = await response.json();
+        state.latestAuditResponse = data;
+        renderAuditResults(data);
+        showAlert("Audit Complete", `Dual-model audit completed in ${data.unit_economics_telemetry.latency_ms} ms.`);
+      } catch (err) {
+        console.error("Audit failed:", err);
+        showAlert("Audit Execution Error", err.message || "Failed to complete audit.", true);
+      } finally {
+        setTimeout(() => {
+          elements.pipelineProgressCard.classList.add('hidden');
+          elements.runAuditBtn.disabled = false;
+          elements.runAuditBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+          state.isAuditing = false;
+        }, 500);
+      }
+    }
+
+    function updatePipelineStep(step, num, text, width) {
+      elements.pipelineStepNumber.textContent = num;
+      elements.pipelineStepText.textContent = text;
+      elements.pipelineProgressBar.style.width = width;
+    }
+
+    // Render Audit Results to DOM
+    function renderAuditResults(data) {
+      const tf = data.tabpfn_forecast;
+      const ga = data.gemma_audit;
+      const ue = data.unit_economics_telemetry;
+      const ts = data.trace_summary;
+
+      // 1. TabPFN Card
+      elements.tabpfnProbability.textContent = tf.overrun_probability_pct.toFixed(1);
+      elements.tabpfnLatencyPill.textContent = `${tf.inference_time_ms.toFixed(1)} ms CPU forward pass`;
+
+      // Tier styling
+      elements.riskTierBadge.textContent = `${tf.risk_tier} RISK`;
+      if (tf.risk_tier === 'CRITICAL') {
+        elements.riskTierBadge.className = "px-3 py-1 rounded-full text-xs font-mono font-bold tracking-wider bg-rose-500/20 text-rose-300 border border-rose-500/40";
+        elements.tabpfnProbability.className = "text-5xl font-mono font-black text-rose-400";
+      } else if (tf.risk_tier === 'ELEVATED') {
+        elements.riskTierBadge.className = "px-3 py-1 rounded-full text-xs font-mono font-bold tracking-wider bg-amber-500/20 text-amber-300 border border-amber-500/40";
+        elements.tabpfnProbability.className = "text-5xl font-mono font-black text-amber-400";
+      } else {
+        elements.riskTierBadge.className = "px-3 py-1 rounded-full text-xs font-mono font-bold tracking-wider bg-emerald-500/20 text-emerald-300 border border-emerald-500/40";
+        elements.tabpfnProbability.className = "text-5xl font-mono font-black text-emerald-400";
+      }
+
+      // Drivers
+      elements.riskDriversList.innerHTML = tf.top_risk_drivers.map(d => `
+        <li class="flex items-start gap-2 bg-slate-900/60 p-2 rounded-lg border border-slate-800/80">
+          <span class="text-rose-400 font-bold">•</span>
+          <span>${escapeHtml(d)}</span>
+        </li>
+      `).join('');
+
+      // 2. Gemma Audit Card
+      elements.totalUnbilledHours.textContent = ga.total_unbilled_hours.toFixed(1);
+      elements.totalRecoveryUsd.textContent = `$${ga.total_recovery_usd.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+      elements.auditVerdictBadge.textContent = ga.overall_verdict;
+      elements.confidenceScoreBadge.textContent = `${ga.confidence_score.toFixed(1)}% Confidence`;
+      elements.executiveReasoningText.textContent = ga.executive_reasoning;
+
+      // Table of Flagged Items
+      if (ga.flagged_items && ga.flagged_items.length > 0) {
+        elements.flaggedItemsTbody.innerHTML = ga.flagged_items.map(item => `
+          <tr class="hover:bg-slate-900/50 transition">
+            <td class="p-2.5 font-medium text-slate-300">${escapeHtml(item.source_type)}</td>
+            <td class="p-2.5 text-slate-400 max-w-[180px] truncate" title="${escapeHtml(item.violated_sow_clause)}">${escapeHtml(item.violated_sow_clause)}</td>
+            <td class="p-2.5 text-slate-400 max-w-[200px] truncate" title="${escapeHtml(item.evidence_quote)}">${escapeHtml(item.evidence_quote)}</td>
+            <td class="p-2.5 text-right font-mono text-indigo-300">${item.estimated_hours.toFixed(1)}</td>
+            <td class="p-2.5 text-right font-mono text-emerald-400 font-bold">$${item.line_item_fee_usd.toLocaleString()}</td>
+            <td class="p-2.5 text-center">
+              <span class="px-2 py-0.5 rounded text-[10px] font-bold ${
+                item.classification === 'OUT_OF_SCOPE' ? 'bg-rose-500/20 text-rose-300 border border-rose-500/30' :
+                item.classification === 'GRAY_AREA' ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30' :
+                'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
+              }">${escapeHtml(item.classification)}</span>
+            </td>
+          </tr>
+        `).join('');
+      } else {
+        elements.flaggedItemsTbody.innerHTML = `
+          <tr>
+            <td colspan="6" class="p-4 text-center text-slate-400 font-sans italic">
+              🎉 Zero scope deviations detected! Project adheres strictly to agreed SOW deliverables.
+            </td>
+          </tr>
+        `;
+      }
+
+      // 3. Change Order Draft
+      elements.changeOrderDraft.value = ga.polite_change_order_draft || '';
+
+      // 4. Sentry Agent Trace Inspector
+      if (ts) {
+        elements.sentryTraceId.textContent = ts.trace_id ? ts.trace_id.slice(0, 16) + '...' : 'local-trace';
+        elements.parentSpanDuration.textContent = `${ts.parent_span.duration_ms.toFixed(1)} ms (100%)`;
+
+        const tabpfnSpan = ts.spans.find(s => s.name === 'tabpfn.overrun_forecast');
+        if (tabpfnSpan) {
+          elements.tabpfnSpanDuration.textContent = `${tabpfnSpan.duration_ms.toFixed(1)} ms`;
+          const pct = Math.max(1, Math.min(100, (tabpfnSpan.duration_ms / ts.parent_span.duration_ms) * 100));
+          elements.tabpfnSpanBar.style.width = `${pct}%`;
+          elements.tabpfnSpanAttrs.textContent = `attributes: dataset_rows=${tabpfnSpan.attributes.dataset_rows}, prob=${tabpfnSpan.attributes.overrun_probability_pct}%, tier=${tabpfnSpan.attributes.risk_tier}`;
+        }
+
+        const gemmaSpan = ts.spans.find(s => s.name === 'gemma.sow_diff_audit');
+        if (gemmaSpan) {
+          elements.gemmaSpanDuration.textContent = `${gemmaSpan.duration_ms.toFixed(1)} ms`;
+          const pct = Math.max(1, Math.min(100, (gemmaSpan.duration_ms / ts.parent_span.duration_ms) * 100));
+          elements.gemmaSpanBar.style.width = `${pct}%`;
+          elements.gemmaSpanAttrs.textContent = `attributes: model=${gemmaSpan.attributes.model_name}, mode=${gemmaSpan.attributes.inference_mode}, unbilled_hours=${gemmaSpan.attributes.total_unbilled_hours}`;
+        }
+      }
+
+      // Unit Economics
+      elements.frontierSavedVal.textContent = `$${ue.frontier_cost_saved_usd.toFixed(4)}`;
+      elements.annualRoiVal.textContent = `$${ue.annualized_saas_roi_usd.toLocaleString(undefined, {maximumFractionDigits: 0})}`;
+    }
+
+    // Export Helpers
+    function copyChangeOrderDraft() {
+      const text = elements.changeOrderDraft.value;
+      if (!text) return;
+      navigator.clipboard.writeText(text).then(() => {
+        showAlert("Copied to Clipboard", "Change Order draft copied ready to paste into Slack/Email.");
+      });
+    }
+
+    function downloadChangeOrderMd() {
+      const text = elements.changeOrderDraft.value;
+      if (!text) return;
+      const blob = new Blob([text], { type: 'text/markdown;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `ScopeGuard_Change_Order_${new Date().toISOString().slice(0, 10)}.md`;
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+
+    function exportAuditLedgerCsv() {
+      if (!state.latestAuditResponse || !state.latestAuditResponse.gemma_audit.flagged_items) {
+        showAlert("No Data", "Run an audit first before exporting CSV.", true);
+        return;
+      }
+      const items = state.latestAuditResponse.gemma_audit.flagged_items;
+      let csvContent = "Source,Classification,SOW_Clause,Evidence_Quote,Estimated_Hours,Recovery_Fee_USD\n";
+      items.forEach(item => {
+        const row = [
+          `"${item.source_type}"`,
+          `"${item.classification}"`,
+          `"${(item.violated_sow_clause || '').replace(/"/g, '""')}"`,
+          `"${(item.evidence_quote || '').replace(/"/g, '""')}"`,
+          item.estimated_hours,
+          item.line_item_fee_usd
+        ];
+        csvContent += row.join(',') + '\n';
+      });
+
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `ScopeGuard_Audit_Ledger_${new Date().toISOString().slice(0, 10)}.csv`;
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+
+    function copyTraceId() {
+      if (state.latestAuditResponse && state.latestAuditResponse.trace_summary) {
+        navigator.clipboard.writeText(state.latestAuditResponse.trace_summary.trace_id).then(() => {
+          showAlert("Trace ID Copied", "Distributed Sentry Trace ID copied to clipboard.");
+        });
+      }
+    }
+
+    // Modal Helpers for 36-Row Dataset
+    function openCsvModal() {
+      elements.csvModal.classList.remove('hidden');
+    }
+    function closeCsvModal() {
+      elements.csvModal.classList.add('hidden');
+    }
+    function filterCsvTable() {
+      const query = document.getElementById('csvSearchInput').value.toLowerCase();
+      const rows = elements.csvTableTbody.querySelectorAll('tr');
+      rows.forEach(r => {
+        r.style.display = r.textContent.toLowerCase().includes(query) ? '' : 'none';
+      });
+    }
+
+    function populateHistoricalCsvTable(rows) {
+      elements.csvTableTbody.innerHTML = rows.map((r, idx) => `
+        <tr class="hover:bg-slate-900/60 transition">
+          <td class="p-2.5 text-slate-500">${idx + 1}</td>
+          <td class="p-2.5 font-bold text-slate-200">${r.agreed_hours} hrs</td>
+          <td class="p-2.5 text-rose-400 font-semibold">${r.unplanned_commits}</td>
+          <td class="p-2.5 text-amber-400 font-semibold">${r.chat_requests}</td>
+          <td class="p-2.5 text-indigo-400">${r.revision_rounds}</td>
+          <td class="p-2.5 text-slate-300">${
+            r.client_retainer_type === 0 ? 'Fixed-Price (0)' :
+            r.client_retainer_type === 1 ? 'Milestone (1)' : 'Hourly (2)'
+          }</td>
+          <td class="p-2.5">
+            <span class="px-2 py-0.5 rounded text-[10px] font-bold ${
+              r.overrun_or_dispute === 1
+                ? 'bg-rose-500/20 text-rose-300 border border-rose-500/30'
+                : 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
+            }">
+              ${r.overrun_or_dispute === 1 ? '1 : OVERRUN / DISPUTE' : '0 : ON-BUDGET'}
+            </span>
+          </td>
+        </tr>
+      `).join('');
+    }
+
+    // =====================================================================
+    // Initialization on Page Load
+    // =====================================================================
+    document.addEventListener('DOMContentLoaded', async () => {
+      try {
+        // 1. Fetch Health & Models
+        const [healthRes, modelsRes, scenariosRes] = await Promise.all([
+          fetch('/api/health').then(r => r.json()).catch(() => ({})),
+          fetch('/api/models').then(r => r.json()).catch(() => ({})),
+          fetch('/api/demo-scenarios').then(r => r.json()).catch(() => ({}))
+        ]);
+
+        // Health Status Pill
+        if (healthRes.subsystems && healthRes.subsystems.ollama) {
+          if (healthRes.subsystems.ollama.reachable) {
+            elements.inferenceStatusPill.innerHTML = `
+              <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
+              <span class="text-emerald-300">Local Gemma via Ollama (0 Bytes External)</span>
+            `;
+          } else {
+            elements.inferenceStatusPill.innerHTML = `
+              <span class="w-2 h-2 rounded-full bg-amber-400"></span>
+              <span class="text-amber-300">Cloud Sandbox Fallback (Rule & Diff Engine)</span>
+            `;
+          }
+        }
+
+        // Populate Model Select
+        if (modelsRes.models && modelsRes.models.length > 0) {
+          elements.modelSelect.innerHTML = modelsRes.models.map(m => {
+            const clean = m.split(' ')[0];
+            return `<option value="${escapeHtml(clean)}" class="bg-slate-900 text-slate-200">${escapeHtml(m)}</option>`;
+          }).join('');
+        }
+
+        // Populate Scenarios and CSV
+        if (scenariosRes.scenarios) {
+          state.scenariosData = scenariosRes.scenarios;
+          // Auto-load Scenario 1 (Severe Scope Creep)
+          loadScenario('severe_scope_creep');
+        }
+
+        if (scenariosRes.historical_csv_preview) {
+          // Fetch full 36 rows from compat endpoint
+          fetch('/api/historical-data')
+            .then(r => r.json())
+            .then(d => {
+              if (d.rows) populateHistoricalCsvTable(d.rows);
+            })
+            .catch(() => {});
+        }
+
+        // Automatically trigger initial audit for immediate judge preview
+        runDualModelAudit();
+
+      } catch (err) {
+        console.error("Initialization error:", err);
+      }
+    });
+  </script>
+</body>
+</html>
