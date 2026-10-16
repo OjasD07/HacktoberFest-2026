@@ -695,26 +695,33 @@ class CloudDemoFallbackAnalyzer:
     ]
 
     @classmethod
+    @classmethod
     def audit(cls, req: AuditRequest) -> GemmaAuditOutput:
         """Perform comprehensive contract diffing and produce an itemized audit."""
         flagged_items: List[FlaggedCreepItem] = []
         git_lower = req.git_logs.lower()
         chat_lower = req.chat_logs.lower()
 
+        # Dynamic scaling factor based on actual unplanned commits
+        # Baseline reference: 25 commits corresponds to 1.0x baseline feature effort
+        commits_count = req.project_metrics.unplanned_commits
+        commit_scale = max(0.0, commits_count / 25.0) if commits_count > 0 else 0.0
+
         for pattern, feature_name, clause, hours, default_source in cls.UNAPPROVED_KEYWORDS:
             match_git = re.search(pattern, git_lower)
             match_chat = re.search(pattern, chat_lower)
 
-            if match_git:
+            if match_git and commits_count > 2:
                 quote = cls._extract_snippet(req.git_logs, pattern)
+                scaled_hours = round(max(1.5, hours * commit_scale), 1)
                 flagged_items.append(
                     FlaggedCreepItem(
                         source_type="Git Commit",
                         evidence_quote=quote or f"Commit referencing: {feature_name}",
                         violated_sow_clause=clause,
                         classification="OUT_OF_SCOPE",
-                        estimated_hours=hours,
-                        line_item_fee_usd=round(hours * req.hourly_rate, 2),
+                        estimated_hours=scaled_hours,
+                        line_item_fee_usd=round(scaled_hours * req.hourly_rate, 2),
                     )
                 )
             elif match_chat and default_source == "Chat Request":
@@ -729,6 +736,36 @@ class CloudDemoFallbackAnalyzer:
                         line_item_fee_usd=round(hours * req.hourly_rate, 2),
                     )
                 )
+
+        # 2. Dynamic Scope Creep from Excess Revision Rounds (Standard SOW allows max 2 rounds)
+        if req.project_metrics.revision_rounds > 2:
+            excess_rounds = req.project_metrics.revision_rounds - 2
+            rev_hours = round(excess_rounds * 4.0, 1)
+            flagged_items.append(
+                FlaggedCreepItem(
+                    source_type="Chat Request",
+                    evidence_quote=f"Client demanded {req.project_metrics.revision_rounds} feedback iteration cycles ({excess_rounds} beyond standard 2-round cap)",
+                    violated_sow_clause="Section 3 (Iterations exceeding 2 feedback cycles require formal change order billing)",
+                    classification="OUT_OF_SCOPE" if excess_rounds >= 3 else "GRAY_AREA",
+                    estimated_hours=rev_hours,
+                    line_item_fee_usd=round(rev_hours * req.hourly_rate, 2),
+                )
+            )
+
+        # 3. Dynamic Scope Creep from Informal Chat Demands (Above 15 messages)
+        if req.project_metrics.chat_requests > 15 and flagged_items:
+            excess_chat = req.project_metrics.chat_requests - 15
+            chat_hours = round(excess_chat * 0.4, 1)
+            flagged_items.append(
+                FlaggedCreepItem(
+                    source_type="Chat Request",
+                    evidence_quote=f"{req.project_metrics.chat_requests} informal ad-hoc chat requests submitted via client messaging channels",
+                    violated_sow_clause="Section 3 (Ad-hoc requests outside formal project management billed at standard rates)",
+                    classification="GRAY_AREA",
+                    estimated_hours=chat_hours,
+                    line_item_fee_usd=round(chat_hours * req.hourly_rate, 2),
+                )
+            )
 
         if not flagged_items:
             total_hours = 0.0
@@ -748,25 +785,28 @@ class CloudDemoFallbackAnalyzer:
                 "Best regards,\nYour Engineering Team"
             )
         else:
-            total_hours = sum(item.estimated_hours for item in flagged_items)
+            total_hours = round(sum(item.estimated_hours for item in flagged_items), 1)
             total_recovery = round(total_hours * req.hourly_rate, 2)
             confidence = 92.5
 
-            if total_hours >= 40.0:
+            if total_hours >= 35.0:
                 verdict = "SEVERE_SCOPE_CREEP"
-            else:
+            elif total_hours >= 10.0:
                 verdict = "MODERATE_GRAY_AREA"
+            else:
+                verdict = "LOW_RISK_DEVIATIONS"
 
             reasoning = (
                 f"ScopeGuard detected {len(flagged_items)} significant scope deviations totaling "
                 f"{total_hours:.1f} unbilled engineering hours (${total_recovery:,.2f} USD). "
-                "The codebase contains explicit architectural features (such as third-party APIs or "
-                "multi-tenancy) that are specifically listed in the SOW's Exclusions section. "
-                "Proceeding without a countersigned Change Order exposes the contractor to invoice dispute."
+                f"Based on {req.project_metrics.unplanned_commits} unplanned commits and "
+                f"{req.project_metrics.revision_rounds} revision cycles at ${req.hourly_rate:.2f}/hr, "
+                "the project exhibits unapproved architectural additions outside contracted deliverables. "
+                "Executing without a signed Change Order exposes the team to significant invoice write-offs."
             )
 
             items_breakdown = "\n".join(
-                f"- {item.violated_sow_clause.split('(')[0].strip()}: {item.estimated_hours:.1f} hrs @ ${req.hourly_rate}/hr = ${item.line_item_fee_usd:,.2f}"
+                f"- {item.violated_sow_clause.split('(')[0].strip()}: {item.estimated_hours:.1f} hrs @ ${req.hourly_rate:.2f}/hr = ${item.line_item_fee_usd:,.2f}"
                 for item in flagged_items
             )
             draft = (
@@ -952,12 +992,12 @@ async def add_security_headers_middleware(request: Request, call_next):
     response.headers["X-Frame-Options"] = "DENY"
     response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
     response.headers["Content-Security-Policy"] = (
-        "default-src 'self'; "
-        "script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; "
-        "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
-        "font-src 'self' https://fonts.gstatic.com; "
+        "default-src 'self' 'unsafe-inline'; "
+        "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.tailwindcss.com https://cdn.jsdelivr.net; "
+        "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.tailwindcss.com; "
+        "font-src 'self' https://fonts.gstatic.com data:; "
         "img-src 'self' data: https:; "
-        "connect-src 'self' http://127.0.0.1:* http://localhost:*;"
+        "connect-src 'self' http://127.0.0.1:* http://localhost:* http://0.0.0.0:* ws://127.0.0.1:* ws://localhost:*;"
     )
     return response
 
