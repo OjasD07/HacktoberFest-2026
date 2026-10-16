@@ -1,0 +1,59 @@
+commit 3a1f9c0b284e71d5a60391824c7f01e9d3a1f9c0
+Author: Alex Vance <alex@scopeguard.dev>
+Date:   Mon Sep 21 10:14:02 2026 -0400
+
+    feat(api): scaffold FastAPI timeseries query endpoints with 30s cache
+
+commit 8d7e2b1a904f3c7e512806914a2f8c01b8d7e2b1
+Author: Alex Vance <alex@scopeguard.dev>
+Date:   Wed Sep 23 16:30:45 2026 -0400
+
+    feat(dashboard): build executive metrics overview and Recharts latency charts
+
+commit 2c4a9f6e8102b5d7a39401826f5d8e03a2c4a9f6
+Author: Alex Vance <alex@scopeguard.dev>
+Date:   Fri Sep 25 14:20:11 2026 -0400
+
+    feat(export): implement streaming CSV download for telemetry records
+
+commit 9b5e1d3a702c8f4e619028475a3b0c1e89b5e1d3
+Author: Alex Vance <alex@scopeguard.dev>
+Date:   Tue Sep 29 11:05:39 2026 -0400
+
+    feat(hubspot): add unapproved hubspot webhook dispatcher for contact sync
+
+commit 1f8a7c4b609e2d5a813047295c2f0a1e71f8a7c4
+Author: Alex Vance <alex@scopeguard.dev>
+Date:   Wed Sep 30 15:40:22 2026 -0400
+
+    fix(hubspot): add exponential backoff for hubspot api rate limits (429)
+
+commit 6e3c0d2a914f5b7e802914836a5c2f01d6e3c0d2
+Author: Alex Vance <alex@scopeguard.dev>
+Date:   Thu Oct 1 17:15:48 2026 -0400
+
+    refactor(schema): add webhook_delivery_logs table and retry queue
+
+commit 4b9a2e8c501f7d3a928041638e2b0a5f14b9a2e8
+Author: Alex Vance <alex@scopeguard.dev>
+Date:   Mon Oct 5 09:45:10 2026 -0400
+
+    feat(filter): add multi-tag dimensional filtering to metric explorer
+
+commit 7c1f8a0e492b6d5a810392847c5f0a2e97c1f8a0
+Author: Alex Vance <alex@scopeguard.dev>
+Date:   Wed Oct 7 13:20:00 2026 -0400
+
+    style(nav): redesign navigation header per client slack feedback
+
+commit 5e2b4d9a801c3f7e619204859a4b0c2e35e2b4d9
+Author: Alex Vance <alex@scopeguard.dev>
+Date:   Fri Oct 9 16:50:33 2026 -0400
+
+    fix(auth): resolve token refresh loop on expired sessions
+
+commit 0d8e1f5b729a4c6e801293847a5f2c01b0d8e1f5
+Author: Alex Vance <alex@scopeguard.dev>
+Date:   Mon Oct 12 11:15:20 2026 -0400
+
+    chore(docker): configure staging docker-compose and environment secrets

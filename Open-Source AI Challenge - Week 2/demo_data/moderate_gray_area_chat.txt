@@ -1,0 +1,9 @@
+[2026-09-28 11:05] Dave (VP Sales): Hey Alex! Loved the staging demo.
+[2026-09-28 11:07] Dave (VP Sales): Quick thought: when a customer has p99 latency spikes, my sales reps need that pushed into HubSpot as a contact note right away so we can upsell our enterprise tier.
+[2026-09-28 11:12] Dave (VP Sales): It's just a simple webhook right? Should take like 10-15 minutes!
+[2026-09-28 11:18] Alex (Dev): Hey Dave, third-party CRM webhooks like HubSpot were explicitly listed as out of scope in Section 2 of our SOW. We can certainly add it via a Change Order at $85/hr!
+[2026-09-28 11:22] Dave (VP Sales): Come on man, we're already paying $10k. It's just an HTTP POST payload. We have an investor call on Thursday, don't nickel-and-dime us on a quick webhook.
+[2026-09-29 18:30] Alex (Dev): I put together a preliminary webhook dispatcher, but HubSpot's API has strict 429 rate limits, so I had to add a retry queue and delivery log table.
+[2026-10-02 09:15] Dave (VP Sales): Wait, why aren't custom HubSpot contact properties syncing? We need lifecycle stage and lead score updated too.
+[2026-10-02 09:40] Alex (Dev): That requires custom property mapping and extra validation logic. This is already about 14 unplanned commits.
+[2026-10-06 14:10] Dave (VP Sales): Let's sync on Milestone 2 sign-off. We can't approve Milestone 2 until the HubSpot sync works with all 12 custom properties.

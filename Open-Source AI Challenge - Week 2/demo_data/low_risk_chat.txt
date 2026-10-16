@@ -1,0 +1,7 @@
+[2026-10-05 10:14] Marcus (Client): Morning Alex! Excited to kick this off. Contract is signed and deposit sent.
+[2026-10-05 10:18] Alex (Dev): Received! Thanks Marcus. Starting on the Next.js scaffold and cart today.
+[2026-10-08 14:22] Marcus (Client): Hey Alex, checked the preview link. The product cards look gorgeous.
+[2026-10-08 14:25] Marcus (Client): Quick question: On the checkout page, could we change the button label from "Pay Now" to "Order Your Beans"?
+[2026-10-08 14:31] Alex (Dev): Easy change, that's supported right in the Stripe Checkout config. Updated and deployed to staging.
+[2026-10-14 16:02] Marcus (Client): Tested the webhook on staging with a test credit card, email confirmation landed in my inbox in 2 seconds.
+[2026-10-15 11:30] Marcus (Client): Everything matches the SOW perfectly. Ready for production cutover tomorrow morning!

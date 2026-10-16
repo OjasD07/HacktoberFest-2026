@@ -1,0 +1,24 @@
+# ScopeGuard: Local-First Scope Creep & Invoice Overrun Auditor
+# Core Production Dependencies
+
+# Async Web Server & Routing
+fastapi>=0.115.0,<1.0.0
+uvicorn[standard]>=0.32.0,<1.0.0
+
+# HTTP Client for Local Ollama Daemon Communication
+httpx>=0.27.2,<1.0.0
+
+# Strict Schema Enforcement & Structured Outputs
+pydantic>=2.9.2,<3.0.0
+
+# Prior Labs' TabPFN Foundation Model & Tabular Analytics
+tabpfn>=2.0.0
+scikit-learn>=1.5.2
+pandas>=2.2.3
+numpy>=1.26.4
+
+# Observability, Agent Tracing & Span Instrumentation
+sentry-sdk[fastapi]>=2.16.0
+
+# Form Data & File Upload Parsing
+python-multipart>=0.0.12
