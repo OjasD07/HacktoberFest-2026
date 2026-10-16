@@ -20,8 +20,11 @@ from main import (
     TabularRiskInput,
     UnitEconomicsTelemetry,
     TraceMetadata,
+    AgentTraceSummary,
+    AgentSpanItem,
     tabpfn_engine,
     ollama_client,
+    rate_limiter,
 )
 
 __all__ = [
@@ -34,8 +37,11 @@ __all__ = [
     "TabularRiskInput",
     "UnitEconomicsTelemetry",
     "TraceMetadata",
+    "AgentTraceSummary",
+    "AgentSpanItem",
     "tabpfn_engine",
     "ollama_client",
+    "rate_limiter",
 ]
 
 if __name__ == "__main__":
