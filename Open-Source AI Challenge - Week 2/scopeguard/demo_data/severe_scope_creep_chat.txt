@@ -1,0 +1,10 @@
+[2026-08-24 23:42] Jason (Client): ALEX! EMERGENCY! Pick up your phone man!
+[2026-08-24 23:45] Jason (Client): We just had dinner with an angel syndicate. They said single-account PayPal manual payout is a JOKE. We will never get funded.
+[2026-08-24 23:46] Jason (Client): We MUST have full Stripe Connect Custom accounts where vendors onboard and get automated split payouts directly to their bank accounts!
+[2026-08-25 08:30] Alex (Dev): Jason, Stripe Connect automated split payouts is a massive financial engine. Section 2 of our SOW literally specifies Stripe Connect and split payouts as explicit exclusions. Building that safely requires KYC verification, webhook listeners, negative balance handling, and at least 40+ hours of engineering.
+[2026-08-25 08:34] Jason (Client): I know what the contract says, but this is the survival of our company! Just grind it out over the next few days. Don't worry about paperwork right now, I promise we'll take care of you once the round closes.
+[2026-08-30 22:15] Jason (Client): Also we realized enterprise studios want to use this, so we can't just have one admin. We need Owner, Billing Manager, Product Lead, and Creator roles with distinct invite permissions.
+[2026-09-03 14:20] Alex (Dev): That requires completely refactoring our database from single-tenant to multi-tenant organization keys. I am working 14-hour days here.
+[2026-09-18 10:00] Alex (Dev): Jason, the platform with Stripe Connect and Multi-Tenant RBAC is deployed. Attached is the final invoice: $7,650 for base SOW + $6,460 (76 hours of Change Orders @ $85/hr for Stripe Connect, RBAC, WebSockets, and database migrations).
+[2026-09-18 10:14] Jason (Client): Are you OUT OF YOUR MIND?! An extra $6,460?!
+[2026-09-18 10:16] Jason (Client): The contract was FIXED-PRICE $7,650! Show me a single signed Change Order document! You never sent one for signature. I am NOT paying a single cent above $7,650. You can talk to my lawyer if you dispute this.

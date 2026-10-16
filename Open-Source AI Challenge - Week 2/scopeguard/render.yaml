@@ -1,0 +1,26 @@
+# ScopeGuard: Local-First Scope Creep & Invoice Overrun Auditor
+# Render Blueprint Configuration (render.yaml)
+# Docs: https://render.com/docs/blueprint-spec
+
+services:
+  - type: web
+    name: scopeguard-auditor
+    runtime: python
+    plan: free
+    region: oregon
+    branch: main
+    buildCommand: pip install -r requirements.txt && python generate_demo_data.py
+    startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /api/health
+    autoDeploy: true
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.10
+      - key: OLLAMA_BASE_URL
+        value: http://127.0.0.1:11434
+      - key: DEFAULT_GEMMA_MODEL
+        value: gemma3:4b
+      - key: SENTRY_DSN
+        sync: false
+      - key: ENABLE_CLOUD_FALLBACK
+        value: "true"

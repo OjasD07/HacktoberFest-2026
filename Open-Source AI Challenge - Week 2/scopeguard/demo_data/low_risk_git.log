@@ -1,0 +1,53 @@
+commit 7c4a1e9b21d5a83e04f9810427c3a01bf2801e91
+Author: Alex Vance <alex@scopeguard.dev>
+Date:   Mon Oct 5 09:30:14 2026 -0400
+
+    feat(scaffold): initialize Next.js 14 project with Tailwind and TypeScript
+
+commit 9f2b8d0e741c92a5b6f381029c7d410ae5729f2b
+Author: Alex Vance <alex@scopeguard.dev>
+Date:   Tue Oct 6 14:15:22 2026 -0400
+
+    feat(catalog): build responsive product grid and category filter components
+
+commit 1a8e4c2b90d7e63f51280a9c41f038d7e29a1a8e
+Author: Alex Vance <alex@scopeguard.dev>
+Date:   Wed Oct 7 11:42:09 2026 -0400
+
+    feat(cart): implement slide-out cart drawer with localStorage persistence
+
+commit 4e7d3f1a82c09b5e7301648d9a2f7c01b4e7d3f1
+Author: Alex Vance <alex@scopeguard.dev>
+Date:   Thu Oct 8 16:50:33 2026 -0400
+
+    feat(stripe): add stripe checkout session creation api route
+
+commit 6b0c2a8d39f1e74a5028914c6e3b0a7d9f6b0c2a
+Author: Alex Vance <alex@scopeguard.dev>
+Date:   Fri Oct 9 10:20:18 2026 -0400
+
+    feat(webhooks): add stripe order fulfillment webhook and resend receipt dispatch
+
+commit 3d9f1b4a70e82c6d5194820a3b7c91f0e43d9f1b
+Author: Alex Vance <alex@scopeguard.dev>
+Date:   Mon Oct 12 13:05:44 2026 -0400
+
+    feat(cms): wire Sanity CMS schema for roast profiles and tasting notes
+
+commit 8e2a7c5b4109d3e862f0174a9c5d3b1e708e2a7c
+Author: Alex Vance <alex@scopeguard.dev>
+Date:   Tue Oct 13 15:40:12 2026 -0400
+
+    fix(mobile): resolve cart slide-in animation layout shift on Safari iOS
+
+commit 5c1b9d3e802a4f7b91630d8c2e4f01a7b95c1b9d
+Author: Alex Vance <alex@scopeguard.dev>
+Date:   Wed Oct 14 17:10:05 2026 -0400
+
+    perf(images): configure next/image avif and webp responsive breakpoints
+
+commit 2f4e8a1c903b7d6e5210948a3c7f01e2b42f4e8a
+Author: Alex Vance <alex@scopeguard.dev>
+Date:   Thu Oct 15 11:00:27 2026 -0400
+
+    chore(release): configure vercel production dns and security headers

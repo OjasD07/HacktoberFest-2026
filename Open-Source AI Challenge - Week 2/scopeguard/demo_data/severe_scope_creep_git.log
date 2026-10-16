@@ -1,0 +1,71 @@
+commit 1a4e9b8c702f3d5a619028475a3b0c1e81a4e9b8
+Author: Alex Vance <alex@scopeguard.dev>
+Date:   Mon Aug 17 09:20:14 2026 -0400
+
+    feat(catalog): creator asset listing directory and search filters
+
+commit 6f2c0d1a904b7e802914836a5c2f01d66f2c0d1a
+Author: Alex Vance <alex@scopeguard.dev>
+Date:   Wed Aug 19 14:15:30 2026 -0400
+
+    feat(storage): implement S3 presigned download link generation
+
+commit 9d8b3a7c501e2f4a813047295c2f0a1e79d8b3a7
+Author: Alex Vance <alex@scopeguard.dev>
+Date:   Fri Aug 21 17:00:22 2026 -0400
+
+    feat(auth): basic JWT login and session cookies for admin
+
+commit 4e1a7c5b609d2e5a813047295c2f0a1e74e1a7c5
+Author: Alex Vance <alex@scopeguard.dev>
+Date:   Tue Aug 25 11:30:19 2026 -0400
+
+    feat(stripe-connect): integrate stripe connect custom onboarding flow (UNAPPROVED)
+
+commit 8c3f2d9a914e5b7e802914836a5c2f01d8c3f2d9
+Author: Alex Vance <alex@scopeguard.dev>
+Date:   Thu Aug 27 16:45:02 2026 -0400
+
+    feat(payouts): implement automated split payouts and fee deduction (UNAPPROVED)
+
+commit 2b7e1a0c501f7d3a928041638e2b0a5f12b7e1a0
+Author: Alex Vance <alex@scopeguard.dev>
+Date:   Mon Aug 31 10:10:45 2026 -0400
+
+    feat(rbac): implement 5-tier role-based access control engine (UNAPPROVED)
+
+commit 0f9a4c8e492b6d5a810392847c5f0a2e90f9a4c8
+Author: Alex Vance <alex@scopeguard.dev>
+Date:   Wed Sep 2 15:35:10 2026 -0400
+
+    refactor(db): migrate entire schema from single-tenant to multi-org tenancy (UNAPPROVED)
+
+commit 5d2c8e1a801c3f7e619204859a4b0c2e35d2c8e1
+Author: Alex Vance <alex@scopeguard.dev>
+Date:   Fri Sep 4 18:20:00 2026 -0400
+
+    feat(webhooks): handle account.updated and transfer.created webhooks (UNAPPROVED)
+
+commit 3a8f1b6b729a4c6e801293847a5f2c01b3a8f1b6
+Author: Alex Vance <alex@scopeguard.dev>
+Date:   Tue Sep 8 13:40:15 2026 -0400
+
+    fix(payouts): prevent negative balance clawback during partial refunds (UNAPPROVED)
+
+commit 7e0d2c4e5102b5d7a39401826f5d8e03a7e0d2c4
+Author: Alex Vance <alex@scopeguard.dev>
+Date:   Thu Sep 10 16:15:29 2026 -0400
+
+    feat(realtime): add websockets for instantaneous vendor balance alerts (UNAPPROVED)
+
+commit 9c4b7a2a702c8f4e619028475a3b0c1e89c4b7a2
+Author: Alex Vance <alex@scopeguard.dev>
+Date:   Mon Sep 14 11:05:44 2026 -0400
+
+    fix(security): patch privilege escalation in vendor team invite flow (UNAPPROVED)
+
+commit 6b1e5d0a914f5b7e802914836a5c2f01d6b1e5d0
+Author: Alex Vance <alex@scopeguard.dev>
+Date:   Wed Sep 16 17:50:11 2026 -0400
+
+    fix(db): repair broken migration locks caused by multi-tenant schema refactor
